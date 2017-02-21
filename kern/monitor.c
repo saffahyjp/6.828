@@ -134,6 +134,11 @@ monitor(struct Trapframe *tf)
 
 	if (tf != NULL)
 		print_trapframe(tf);
+	
+	/*cprintf("begin fault\n");
+	int *a = (void *) 0x12345678;
+	cprintf("asdf %u\n", *a);
+	cprintf("end fault\n");*/
 
 	while (1) {
 		buf = readline("K> ");

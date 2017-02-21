@@ -58,6 +58,28 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+void trap_00();
+void trap_01();
+void trap_02();
+void trap_03();
+void trap_04();
+void trap_05();
+void trap_06();
+void trap_07();
+void trap_08();
+void trap_09();
+void trap_10();
+void trap_11();
+void trap_12();
+void trap_13();
+void trap_14();
+void trap_15();
+void trap_16();
+void trap_17();
+void trap_18();
+void trap_19();
+
+void trap_48();
 
 void
 trap_init(void)
@@ -65,8 +87,29 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
-
-	// Per-CPU setup 
+	SETGATE(idt[0 ], 0, GD_KT, &trap_00, 0);
+	SETGATE(idt[1 ], 0, GD_KT, &trap_01, 0);
+	SETGATE(idt[2 ], 0, GD_KT, &trap_02, 0);
+	SETGATE(idt[3 ], 1, GD_KT, &trap_03, 3);
+	SETGATE(idt[4 ], 1, GD_KT, &trap_04, 0);
+	SETGATE(idt[5 ], 0, GD_KT, &trap_05, 0);
+	SETGATE(idt[6 ], 0, GD_KT, &trap_06, 0);
+	SETGATE(idt[7 ], 0, GD_KT, &trap_07, 0);
+	SETGATE(idt[8 ], 0, GD_KT, &trap_08, 0);
+	SETGATE(idt[9 ], 0, GD_KT, &trap_09, 0);
+	SETGATE(idt[10], 0, GD_KT, &trap_10, 0);
+	SETGATE(idt[11], 0, GD_KT, &trap_11, 0);
+	SETGATE(idt[12], 0, GD_KT, &trap_12, 0);
+	SETGATE(idt[13], 0, GD_KT, &trap_13, 0);
+	SETGATE(idt[14], 0, GD_KT, &trap_14, 0);
+	SETGATE(idt[15], 0, GD_KT, &trap_15, 0);
+	SETGATE(idt[16], 0, GD_KT, &trap_16, 0);
+	SETGATE(idt[17], 0, GD_KT, &trap_17, 0);
+	SETGATE(idt[18], 0, GD_KT, &trap_18, 0);
+	SETGATE(idt[19], 0, GD_KT, &trap_19, 3);
+	
+	SETGATE(idt[48], 1, GD_KT, &trap_48, 3);
+	// Per-CPU setup
 	trap_init_percpu();
 }
 
@@ -143,6 +186,30 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	cprintf("got trap %d\n", tf->tf_trapno);
+	if(tf->tf_trapno == T_PGFLT)
+	{
+		if(!(tf->tf_err & 4))
+		{
+			panic("kernel pagefault\n");
+			print_trapframe(tf);
+		}
+		page_fault_handler(tf);
+		return;
+	}
+	else if(tf->tf_trapno == T_BRKPT)
+	{
+		monitor(tf);
+		return;
+	}
+	else if(tf->tf_trapno == T_SYSCALL)
+	{
+		tf->tf_regs.reg_eax = syscall(
+			tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx,
+			tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi
+		);
+		return;
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);

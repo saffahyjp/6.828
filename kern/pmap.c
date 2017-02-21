@@ -158,6 +158,9 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	size_t envs_size = NENV * sizeof(struct Env);
+	envs = boot_alloc(envs_size);
+	memset(envs, 0, envs_size);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -183,7 +186,7 @@ mem_init(void)
 	// Your code goes here:
 	
 	//boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
-	int bn = ROUNDUP(pages_size, PGSIZE) / PGSIZE;
+	//int bn = ROUNDUP(pages_size, PGSIZE) / PGSIZE;
 	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(pages_size, PGSIZE), PADDR(pages), PTE_U | PTE_P);
 	//page_insert(kern_pgdir, pa2page(PADDR(&pages)), (void *) ((size_t) (&pages) >> PGSHIFT << PGSHIFT), PTE_W | PTE_P);
 	//for(int i = 0; i < bn; ++i)
@@ -196,6 +199,12 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	//cprintf("vaddr envs %p\n", envs);
+	boot_map_region(kern_pgdir, UENVS, ROUNDUP(envs_size, PGSIZE), PADDR(envs), PTE_U | PTE_P);
+	cprintf("uenvs %p size %p pa %p\n", UENVS, ROUNDUP(envs_size, PGSIZE), PADDR(envs));
+	cprintf("kern walk %p %p\n", pgdir_walk(kern_pgdir, (void *) 0xeec60000, 0), *pgdir_walk(kern_pgdir, (void *) 0xeec60000, 0));
+	cprintf("kern walk %p %p\n", pgdir_walk(kern_pgdir, (void *) 0xeec60048, 0), *pgdir_walk(kern_pgdir, (void *) 0xeec60048, 0));
+	//while(1);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -383,6 +392,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
 	pde_t *ent = pgdir + PDX(va);
+	//cprintf("walk *ent %p\n", *ent);
 	if(*ent & PTE_P)
 		return KADDR((physaddr_t) (PTX(va) + (pte_t *) PTE_ADDR(*ent)));
 	else if(create)
@@ -418,6 +428,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 		pte_t *pte = pgdir_walk(pgdir, (const void *) (va + offset), 1);
 		if(!pte)
 			panic("map failed\n");
+		//cprintf("bootmap pte %p ent %p\n", pte, (pa + offset) | perm | PTE_P);
 		*pte = (pa + offset) | perm | PTE_P;
 	}
 }
@@ -564,7 +575,19 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-
+	const void *begin = ROUNDDOWN(va, PGSIZE);
+	const void *end = ROUNDUP(va + len, PGSIZE);
+	for(const void *i = begin; i != end; i += PGSIZE)
+	{
+		pte_t *pte = pgdir_walk(env->env_pgdir, i, 0);
+		if(i >= (void *) ULIM || !pte || !(*pte & (perm | PTE_P)))
+		{
+			const void *ans = i;
+			if(ans < va) ans = va;
+			user_mem_check_addr = (uintptr_t) ans;
+			return -E_FAULT;
+		}
+	}
 	return 0;
 }
 
