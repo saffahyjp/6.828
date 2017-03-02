@@ -71,6 +71,7 @@ lapic_init(void)
 	// TICR would be calibrated using an external time source.
 	lapicw(TDCR, X1);
 	lapicw(TIMER, PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+	//lapicw(TICR, 1000000000); 
 	lapicw(TICR, 10000000); 
 
 	// Leave LINT0 of the BSP enabled so that it can get
