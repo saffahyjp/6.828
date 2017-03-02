@@ -289,7 +289,12 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	//boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+	for(int i = 0; i < NCPU; i++)
+	{
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_P | PTE_W);
+	}
 }
 
 // --------------------------------------------------------------
@@ -328,9 +333,10 @@ page_init(void)
 	// Change the code to reflect this.
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
+	assert(MPENTRY_PADDR % PGSIZE == 0);
 	size_t i;
 	for(i = 0; i < npages; i++)
-		if(i == 0 || (i * PGSIZE >= IOPHYSMEM && i * PGSIZE < EXTPHYSMEM + (4 << 20)))
+		if(i == 0 || (i * PGSIZE >= IOPHYSMEM && i * PGSIZE < EXTPHYSMEM + (4 << 20)) || i * PGSIZE == MPENTRY_PADDR)
 		{
 			pages[i].pp_ref = 233; // 233?
 		}
@@ -496,6 +502,7 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	tlb_invalidate(pgdir, va);
 	pte_t *pte = pgdir_walk(pgdir, va, 0);
 	bool remove = pte && (*pte & PTE_P);
 	//bool spec = (pp->pp_ref == 1);
@@ -540,7 +547,7 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 	pte_t *pte = pgdir_walk(pgdir, va, 0);
 	if(pte_store)
 		*pte_store = pte;
-	if(!pte)
+	if(!pte || !(*pte & PTE_P))
 		return NULL;
 	return pa2page(PTE_ADDR(*pte));
 }
@@ -563,14 +570,15 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 void
 page_remove(pde_t *pgdir, void *va)
 {
+	tlb_invalidate(pgdir, va);
 	// Fill this function in
 	pte_t *pte;
 	struct PageInfo *pi = page_lookup(pgdir, va, &pte);
 	if(!pi)
 		return;
 	page_decref(pi);
-	*pte = 0;
 	tlb_invalidate(pgdir, va);
+	*pte = 0;
 }
 
 //
@@ -617,7 +625,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	assert(pa % PGSIZE == 0);
+	size = ROUNDUP(size, PGSIZE);
+	if(base + size > MMIOLIM)
+		panic("mmio_map_region: overflow MMIOLIM\n");
+	void *ret = (void *) base;
+	//static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W | PTE_P);
+	base += size;
+	//panic("mmio_map_region not implemented");
+	return ret;
 }
 
 static uintptr_t user_mem_check_addr;

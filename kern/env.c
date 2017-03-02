@@ -260,6 +260,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
+	e->env_tf.tf_eflags |= FL_IF;
 
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
@@ -376,10 +377,10 @@ load_icode(struct Env *e, uint8_t *binary)
 			memcpy((void *) ph->p_va, binary + ph->p_offset, ph->p_filesz);
 			memset((void *) ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
 			lcr3(PADDR(kern_pgdir));
-			cprintf("mem %p - %p\n", ph->p_va, ph->p_va + ph->p_filesz);
+			//cprintf("mem %p - %p\n", ph->p_va, ph->p_va + ph->p_filesz);
 		}
 	e->env_tf.tf_eip = elf->e_entry;
-	cprintf("entry %p\n", elf->e_entry);
+	//cprintf("entry %p\n", elf->e_entry);
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
@@ -545,11 +546,11 @@ env_run(struct Env *e)
 	curenv = e;
 	e->env_status = ENV_RUNNING;
 	++e->env_runs;
-	//cprintf("2333333333333333333333333\n");
+	//e->env_tf.tf_eflags |= FL_IF;
+	unlock_kernel();
+	//cprintf("check pdx %p %p\n", e->env_pgdir[PDX(UVPT)], e->env_pgdir);
 	lcr3(PADDR(e->env_pgdir));
-	//cprintf("2333333333333333333333333\n");
 	env_pop_tf(&e->env_tf);
-	//cprintf("2333333333333333333333333\n");
 
 	//panic("env_run not yet implemented");
 }
