@@ -279,6 +279,16 @@ trap_dispatch(struct Trapframe *tf)
 		sched_yield();
 		return;
 	}
+	else if(tf->tf_trapno == IRQ_OFFSET + IRQ_KBD)
+	{
+		kbd_intr();
+		return;
+	}
+	else if(tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL)
+	{
+		serial_intr();
+		return;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the

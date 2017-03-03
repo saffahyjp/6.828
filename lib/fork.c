@@ -93,7 +93,7 @@ duppage(envid_t envid, unsigned pn)
 	void *addr = (void *) (pn * PGSIZE);
 	
 	uint32_t perm = uvpt[PGNUM(addr)] & PTE_SYSCALL;
-	if(perm & PTE_W)
+	if((perm & PTE_W) && !(perm & PTE_SHARE))
 		perm = (perm & ~PTE_W) | PTE_COW;
 	//cprintf("map %d\n", pn);
 	if(sys_page_map(0, addr, envid, addr, perm))
