@@ -1,6 +1,7 @@
 #include <inc/assert.h>
 #include <inc/x86.h>
 #include <kern/spinlock.h>
+#include <kern/trap.h>
 #include <kern/env.h>
 #include <kern/pmap.h>
 #include <kern/monitor.h>
@@ -11,7 +12,8 @@ void sched_halt(void);
 void
 sched_yield(void)
 {
-	struct Env *idle;
+	//cprintf("sched!\n");
+	//struct Env *idle;
 
 	// Implement simple round-robin scheduling.
 	//
@@ -29,6 +31,23 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	int cid = 0;
+	if(curenv)
+		cid = curenv - envs;
+	//cprintf("enter sched yield cid %d\n", cid);
+	for(int i = 0; i < NENV; i++)
+	{
+		struct Env *ne = envs + (cid + i) % NENV;
+		if(ne->env_status != ENV_FREE)
+		{
+			//cprintf("consider env_id %x status %d\n", ne->env_id, ne->env_status);
+			//print_trapframe(&ne->env_tf);
+		}
+		if(ne->env_status == ENV_RUNNABLE)
+			env_run(ne);
+	}
+	if(curenv && curenv->env_status == ENV_RUNNING)
+		env_run(curenv);
 
 	// sched_halt never returns
 	sched_halt();

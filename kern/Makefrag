@@ -73,6 +73,7 @@ KERN_BINFILES +=	user/idle \
 			user/faultalloc \
 			user/faultallocbad \
 			user/faultnostack \
+			user/tf \
 			user/faultbadhandler \
 			user/faultevilhandler \
 			user/forktree \
