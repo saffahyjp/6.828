@@ -16,6 +16,7 @@
 #include <kern/spinlock.h>
 #include <kern/time.h>
 #include <kern/pci.h>
+#include <kern/e1000.h>
 
 static void boot_aps(void);
 
@@ -79,6 +80,15 @@ i386_init(void)
 
 	// Should not be necessary - drains keyboard because interrupt has given up.
 	kbd_intr();
+	
+	/*struct TransDesc td;
+	memset(&td, 0, sizeof(td));
+	char c[256] = "asdfasdfasfd";
+	td.addr = PADDR(c);
+	td.length = 1;
+	cprintf("transmit %d\n", try_transmit(&td));
+	td.length = 8;
+	cprintf("transmit %d\n", try_transmit(&td));*/
 
 	// Schedule and run the first user environment!
 	sched_yield();

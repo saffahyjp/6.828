@@ -277,6 +277,7 @@ trap_dispatch(struct Trapframe *tf)
 	{
 		//cprintf("hehe\n");
 		lapic_eoi();
+		time_tick();
 		sched_yield();
 		return;
 	}
@@ -400,8 +401,8 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 3: Your code here.
 	if(!(tf->tf_err & 4))
 	{
-		panic("kernel pagefault\n");
 		print_trapframe(tf);
+		panic("kernel pagefault\n");
 	}
 
 	// We've already handled kernel-mode exceptions, so if we get here,
